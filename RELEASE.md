@@ -1,3 +1,12 @@
+## [v0.2.1] - 14:44:59 18/8/26
+
+**Loại thay đổi:** `PATCH`
+
+### Chi tiết thay đổi:
+- fix(release): correct arrow symbol in logging message for version upgrade
+
+---
+
 ## [v0.2.0] - 14:43:05 18/8/26
 
 **Loại thay đổi:** `MINOR`
