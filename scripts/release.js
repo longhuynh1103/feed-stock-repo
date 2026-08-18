@@ -39,8 +39,8 @@ function run() {
     const logOutput = execSync(gitLogCmd).toString().trim();
 
     if (!logOutput) {
-        logger.info('Không phát hiện commit mới nào kể từ lần release trước. Giữ nguyên version v' + currentVersion);
-        return;
+      logger.info('Không phát hiện commit mới nào kể từ lần release trước. Giữ nguyên version v' + currentVersion);
+      return;
     }
 
 
@@ -55,12 +55,12 @@ function run() {
     // - BREAKING CHANGE hoặc feat!: nâng MAJOR (x.0.0)
     // - feat: hoặc minor: nâng MINOR (0.x.0)
     // - fix:, chore:, refactor:, docs:... nâng PATCH (0.0.x)
-    let releaseType = 'patch'; 
+    let releaseType = 'patch';
     let descriptionList = [];
 
     for (const commit of commits) {
       descriptionList.push(`- ${commit}`);
-      
+
       if (commit.includes('BREAKING CHANGE') || commit.match(/^[a-zA-Z]+!:/)) {
         releaseType = 'major';
       } else if (commit.startsWith('feat:') && releaseType !== 'major') {

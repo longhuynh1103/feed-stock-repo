@@ -12,23 +12,20 @@ export class TransformInterceptor<T> implements NestInterceptor {
     const request = ctx.getRequest();
     const response = ctx.getResponse();
     const statusCode = response.statusCode;
-    
+
     // Lấy requestId từ kho lưu trữ ngữ cảnh
     const store = requestStore.getStore();
     const requestId = store?.get('requestId');
     const startTimeStr = store?.get('startTime');
-    
-    
+
     return next.handle().pipe(
       map((data) => {
         let executionTime = '0.00';
         if (startTimeStr) {
-            executionTime = (performance.now() - parseFloat(startTimeStr)).toFixed(2);
+          executionTime = (performance.now() - parseFloat(startTimeStr)).toFixed(2);
         }
         // 3. Log thông tin thời gian chạy ra Console/PM2 kèm theo RequestID
-        this.logger.log(
-          `[ReqID: ${requestId}] | Method: ${request.method} | URL: ${request.url} | Status: ${statusCode} | +${executionTime}ms`,
-        );
+        this.logger.log(`[ReqID: ${requestId}] | Method: ${request.method} | URL: ${request.url} | Status: ${statusCode} | +${executionTime}ms`);
 
         return {
           statusCode,

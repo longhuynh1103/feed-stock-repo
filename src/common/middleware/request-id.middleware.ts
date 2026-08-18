@@ -10,10 +10,10 @@ export const requestStore = new AsyncLocalStorage<Map<string, string>>();
 export class RequestIdMiddleware implements NestMiddleware {
   use(req: FastifyRequest['raw'], res: FastifyReply['raw'], next: () => void) {
     const store = new Map<string, string>();
-    
+
     // Kiểm tra xem Client có gửi sẵn x-request-id lên không (tiện cho Microservices), nếu không thì tự sinh mới
     const requestId = (req.headers['x-request-id'] as string) || randomUUID();
-    
+
     store.set('requestId', requestId);
     store.set('startTime', performance.now().toString());
 

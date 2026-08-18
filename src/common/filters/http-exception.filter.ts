@@ -27,7 +27,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const store = requestStore.getStore();
     const requestId = store?.get('requestId');
     const startTimeStr = store?.get('startTime');
-    
+
     // Tính toán thời gian xử lý cho đến khi vấp lỗi
     let executionTime = '0.00';
     if (startTimeStr) {
@@ -50,6 +50,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exception instanceof Error ? exception.stack : '',
     );
 
-    response.status(status).send(errorResponseBody); 
+    response.status(status).send(errorResponseBody);
   }
 }

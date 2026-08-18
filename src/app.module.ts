@@ -17,8 +17,6 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(RequestIdMiddleware)
-      .forRoutes('*'); // Áp dụng cho mọi route của ứng dụng
+    consumer.apply(RequestIdMiddleware).forRoutes('*'); // Áp dụng cho mọi route của ứng dụng
   }
 }

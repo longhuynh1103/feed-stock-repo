@@ -36,7 +36,7 @@ export class AppService {
     await new Promise((resolve) => setTimeout(resolve, 5));
     const cpuDiff = process.cpuUsage(cpuStartTime);
     const totalCpuTime = (cpuDiff.user + cpuDiff.system) / 1000; // Đổi sang mili-giây
-    
+
     // 3. Kiểm tra kết nối database thực tế
     const isDbConnected = await this.prisma.checkConnection();
 
@@ -49,7 +49,7 @@ export class AppService {
       cpuUsage: `${totalCpuTime.toFixed(4)}%`,
       memoryUsage,
       database: {
-        connected: isDbConnected
+        connected: isDbConnected,
       },
       os: {
         platform: process.platform,
