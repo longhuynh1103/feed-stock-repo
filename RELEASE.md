@@ -1,3 +1,12 @@
+## [v0.3.0] - 16:30:48 18/8/26
+
+**Loại thay đổi:** `MINOR`
+
+### Chi tiết thay đổi:
+- feat: add DTOs and entities for export, import, inventory, and user management
+
+---
+
 ## [v0.2.2] - 14:51:02 18/8/26
 
 **Loại thay đổi:** `PATCH`
