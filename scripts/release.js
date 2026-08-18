@@ -70,7 +70,7 @@ function run() {
 
     // Tính toán phiên bản mới dựa trên thuật toán quyết định bên trên
     const nextVersion = semver.inc(currentVersion, releaseType);
-    logger.info(`Phát hiện release dạng [${releaseType.toUpperCase()}]. Nâng cấp từ v${currentVersion} ➡️ v${nextVersion}`);
+    logger.info(`Phát hiện release dạng [${releaseType.toUpperCase()}]. Nâng cấp từ v${currentVersion} → v${nextVersion}`);
 
     // 5. Lấy ngày giờ hiện tại theo giờ Việt Nam (ICT)
     const now = new Date();
