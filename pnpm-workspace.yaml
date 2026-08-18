@@ -1,3 +1,5 @@
 allowBuilds:
+  '@prisma/engines': false
   '@swc/core': true
+  prisma: false
   unrs-resolver: true

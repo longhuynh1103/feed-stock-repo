@@ -1,6 +1,6 @@
 {
   "name": "feed-stock-repo",
-  "version": "0.4.0",
+  "version": "0.1.0",
   "description": "Multi-warehouse inventory management for animal feed",
   "author": "long.hg",
   "private": true,
