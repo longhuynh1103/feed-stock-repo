@@ -1,11 +1,12 @@
 {
   "name": "feed-stock-repo",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "version": "0.4.0",
+  "description": "Multi-warehouse inventory management for animal feed",
+  "author": "long.hg",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "release": "node scripts/release.js",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -20,11 +21,21 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@nestjs/common": "^11.0.1",
-    "@nestjs/core": "^11.0.1",
+    "@nestjs/common": "^11.2.1",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.2.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-fastify": "^11.2.1",
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.12.0",
+    "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.2",
+    "signale": "^1.4.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -37,6 +48,8 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
+    "@types/semver": "^7.8.0",
+    "@types/signale": "^1.4.7",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
@@ -44,6 +57,8 @@
     "globals": "^17.0.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
+    "prisma": "^7.9.1",
+    "semver": "^7.8.5",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
