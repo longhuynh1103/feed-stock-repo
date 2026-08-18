@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { PrismaModule } from './modules/prisma/prisma.module';
+import { ProductsModule } from './modules/products/products.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
       isGlobal: true, // Dùng được ở mọi module mà không cần import lại
     }),
     PrismaModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

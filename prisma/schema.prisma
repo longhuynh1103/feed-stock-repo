@@ -13,6 +13,18 @@ datasource db {
   provider = "postgresql"
 }
 
+generator nestjsDto {
+  provider                        = "prisma-generator-nestjs-dto"
+  output                          = "../src/generated/dtos"
+  outputToNestJsResourceStructure = "false"
+  flatResourceStructure           = "true"
+  exportRelationModifierRequired  = "true"
+  reExport                        = "true"
+  createDtoPrefix                 = "Create"
+  updateDtoPrefix                 = "Update"
+  dtoSuffix                       = "Dto"
+}
+
 // ============================================================================
 // ENUM
 // ============================================================================
