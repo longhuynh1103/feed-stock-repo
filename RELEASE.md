@@ -1,3 +1,12 @@
+## [v0.2.2] - 14:51:02 18/8/26
+
+**Loại thay đổi:** `PATCH`
+
+### Chi tiết thay đổi:
+- chore: update Prettier configuration and add VSCode settings; refactor code for consistency
+
+---
+
 ## [v0.2.1] - 14:44:59 18/8/26
 
 **Loại thay đổi:** `PATCH`
