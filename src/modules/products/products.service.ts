@@ -1,11 +1,19 @@
-import { Injectable } from '@nestjs/common';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { CreateProductDto } from '@/generated/dtos/create-product.dto';
+import { UpdateProductDto } from '@/generated/dtos/update-product.dto';
+import { PrismaService } from '@/modules/prisma/prisma.service';
+import { alsContext } from '@/common/context/als.context';
 
 @Injectable()
 export class ProductsService {
-  create(createProductDto: CreateProductDto) {
-    return 'This action adds a new product';
+  private readonly logger: Logger;
+  constructor(private readonly prismaService: PrismaService) {
+    this.logger = new Logger(ProductsService.name);
+  }
+  async create(createProductDto: CreateProductDto) {
+    const store = alsContext.getStore();
+    this.logger.log(`[${store?.requestId}] Creating product...`);
+    return await this.prismaService.product.create({ data: createProductDto });
   }
 
   findAll() {

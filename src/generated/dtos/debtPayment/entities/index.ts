@@ -1,0 +1,2 @@
+
+export * from './debtPayment.entity';

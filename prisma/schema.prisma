@@ -14,15 +14,12 @@ datasource db {
 }
 
 generator nestjsDto {
-  provider                        = "prisma-generator-nestjs-dto"
-  output                          = "../src/generated/dtos"
-  outputToNestJsResourceStructure = "false"
-  flatResourceStructure           = "true"
-  exportRelationModifierRequired  = "true"
+  provider     = "prisma-generator-nestjs-dto"
+  output       = "../src/generated/dtos"
+  outputToNestJsResourceStructure = "true"
+  exportRelationModifierClasses   = "true"
   reExport                        = "true"
-  createDtoPrefix                 = "Create"
-  updateDtoPrefix                 = "Update"
-  dtoSuffix                       = "Dto"
+  definiteAssignmentAssertion  = "true"
 }
 
 // ============================================================================

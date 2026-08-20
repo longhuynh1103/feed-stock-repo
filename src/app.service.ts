@@ -21,7 +21,7 @@ export class AppService {
     }
   }
 
-  async getHealthCheck() {
+  async getHealthCheck(): Promise<Record<string, any>> {
     // 1. Tính toán dung lượng RAM tiêu thụ (Đổi byte sang MB)
     const memory = process.memoryUsage();
     const memoryUsage = {

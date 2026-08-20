@@ -1,7 +1,7 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { requestStore } from '../middleware/request-id.middleware';
+import { alsContext } from '@/common/context/als.context';
 
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor {
@@ -14,9 +14,9 @@ export class TransformInterceptor<T> implements NestInterceptor {
     const statusCode = response.statusCode;
 
     // Lấy requestId từ kho lưu trữ ngữ cảnh
-    const store = requestStore.getStore();
-    const requestId = store?.get('requestId');
-    const startTimeStr = store?.get('startTime');
+    const store = alsContext.getStore();
+    const requestId = store?.requestId;
+    const startTimeStr = store?.startTime;
 
     return next.handle().pipe(
       map((data) => {
@@ -25,7 +25,7 @@ export class TransformInterceptor<T> implements NestInterceptor {
           executionTime = (performance.now() - parseFloat(startTimeStr)).toFixed(2);
         }
         // 3. Log thông tin thời gian chạy ra Console/PM2 kèm theo RequestID
-        this.logger.log(`[ReqID: ${requestId}] | Method: ${request.method} | URL: ${request.url} | Status: ${statusCode} | +${executionTime}ms`);
+        this.logger.log(`<== Completed request [ReqId: ${requestId} | Method: ${request.method} | Path: ${request.url} | Status: ${statusCode} | +${executionTime}ms]`);
 
         return {
           statusCode,

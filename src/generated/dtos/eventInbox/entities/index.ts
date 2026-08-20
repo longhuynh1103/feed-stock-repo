@@ -1,0 +1,2 @@
+
+export * from './eventInbox.entity';
