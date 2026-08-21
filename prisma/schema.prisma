@@ -1,25 +1,43 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// ============================================================================
+// PRISMA 7 SCHEMA
+// ============================================================================
+// Lưu ý quan trọng (Prisma 7):
+//   - Chỉ được có MỘT khối `datasource`; connection URL nằm trong
+//     `prisma.config.ts` (datasource.url không còn hợp lệ trong schema).
+//   - `driverAdapters` đã GA -> không cần khai báo previewFeatures.
+//   - App import PrismaClient từ '@prisma/client' nên giữ generator
+//     `prisma-client-js` (sinh vào node_modules, tương thích ngược).
 
 generator client {
   provider = "prisma-client-js"
-  // output   = "../src/generated/prisma"
-  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-generator nestjsDto {
-  provider     = "prisma-generator-nestjs-dto"
-  output       = "../src/generated/dtos"
-  outputToNestJsResourceStructure = "true"
+// Sinh DTO + decorator class-validator trực tiếp từ model Prisma, chạy cùng
+// `npx prisma generate` -> luôn đồng bộ với schema. Tài liệu + danh sách
+// annotation: https://www.npmjs.com/package/@brakebein/prisma-generator-nestjs-dto
+//
+//   classValidation=true -> tự thêm @IsString/@IsInt/@IsDecimal/@IsEnum/
+//                           @IsOptional/@IsNotEmpty... cho từng field.
+//   Annotation viết bằng `///` ngay trên field:
+//     @DtoReadOnly            : ẩn khỏi CreateDTO + UpdateDTO (field hệ thống)
+//     @DtoCreateHidden / @DtoUpdateHidden / @DtoEntityHidden : ẩn theo class
+//     @DtoCreateOptional / @DtoUpdateOptional : đưa field có @default vào DTO
+//     @DtoRelationIncludeId   : giữ field FK phẳng (vd customerId) trong DTO
+//     @Min(0) @Length(3, 50) @Matches(/.../) @IsIn([...]) : validator bổ sung
+//       (validator KHÔNG tham số viết không có ngoặc: @IsUUID, @IsPositive)
+//     @minLength 3 / @maxLength 50 / @minimum 0 / @description ... / @example ...
+//                            : metadata swagger cho @ApiProperty()
+generator class_validator {
+  provider                        = "prisma-generator-nestjs-dto"
+  output                          = "../src/generated/dto"
+  outputToNestJsResourceStructure = "false"
   exportRelationModifierClasses   = "true"
-  reExport                        = "true"
-  definiteAssignmentAssertion  = "true"
+  classValidation                 = "true"
+  fileNamingStyle                 = "camel"
 }
 
 // ============================================================================
@@ -73,27 +91,43 @@ enum EventInboxStatus {
 // ============================================================================
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly — soft-delete do service quản lý, client không được đụng tới
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
-  username     String    @db.VarChar(50)
-  passwordHash String    @map("password_hash")
-  fullName     String    @map("full_name")
-  phone        String?   @db.VarChar(15)
-  isActive     Boolean   @default(true) @map("is_active")
+  /// @Length(3, 50)
+  /// @minLength 3
+  /// @maxLength 50
+  /// @example nhanvien01
+  // @unique viết ở field (không dùng @@unique([username])) để tránh lỗi
+  // trùng property trong ConnectDTO của prisma-generator-nestjs-dto;
+  // ràng buộc DB sinh ra giống hệt (users_username_key).
+  // Xem ghi chú soft-delete + unique ở cuối file.
+  username     String  @unique @db.VarChar(50)
+  /// @DtoCreateHidden — API nhận `password` qua DTO riêng của Auth, service tự hash
+  /// @DtoUpdateHidden
+  /// @DtoEntityHidden — không bao giờ lộ hash ra response
+  passwordHash String  @map("password_hash")
+  /// @Length(2, 100)
+  /// @maxLength 100
+  fullName     String  @map("full_name")
+  /// @Matches(/^\+?[0-9]{8,15}$/)
+  /// @maxLength 15
+  phone        String? @db.VarChar(15)
+  /// @DtoUpdateOptional — cho phép admin bật/tắt tài khoản
+  isActive     Boolean @default(true) @map("is_active")
 
-  roles              UserRole[]
-  fcmDeviceTokens    FcmDeviceToken[]
-  refreshTokens      RefreshToken[]
-  debtPayments       DebtPayment[]
-  exportOrders       ExportOrder[]
-  importOrders       ImportOrder[]
-  inventoryTxns      InventoryTransaction[]
-  notifications      Notification[]
+  roles           UserRole[]
+  fcmDeviceTokens FcmDeviceToken[]
+  refreshTokens   RefreshToken[]
+  debtPayments    DebtPayment[]
+  exportOrders    ExportOrder[]
+  importOrders    ImportOrder[]
+  inventoryTxns   InventoryTransaction[]
+  notifications   Notification[]
 
-  @@unique([username]) // xem ghi chú soft-delete + unique ở cuối file
   @@index([isActive])
   @@map("users")
 }
@@ -102,13 +136,15 @@ model Role {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
-  name        String @db.VarChar(30)
+  /// @Length(2, 30)
+  /// @maxLength 30
+  name        String           @unique @db.VarChar(30)
   users       UserRole[]
   permissions RolePermission[]
 
-  @@unique([name])
   @@map("roles")
 }
 
@@ -116,17 +152,20 @@ model Permission {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
-  code  String @db.VarChar(50)
+  /// @Length(3, 50)
+  /// @maxLength 50
+  code  String           @unique @db.VarChar(50)
   roles RolePermission[]
 
-  @@unique([code])
   @@map("permissions")
 }
 
 /// Bảng join tường minh (thay cho @JoinTable ẩn của TypeORM) để có thể mở
 /// rộng thêm metadata (ai gán, khi nào) mà không phải đổi cấu trúc sau này.
+/// Bảng nội bộ - không expose Create/Update DTO qua API.
 model UserRole {
   userId     String   @map("user_id") @db.Uuid
   roleId     String   @map("role_id") @db.Uuid
@@ -158,9 +197,11 @@ model FcmDeviceToken {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  userId      String    @map("user_id") @db.Uuid
-  deviceToken String    @unique @map("device_token")
-  platform    String    @db.VarChar(10) // IOS | ANDROID | WEB (giữ String để dễ mở rộng nền tảng mới)
+  userId      String @map("user_id") @db.Uuid
+  deviceToken String @unique @map("device_token")
+  /// @IsIn(['IOS', 'ANDROID', 'WEB'])
+  platform    String @db.VarChar(10) // IOS | ANDROID | WEB (giữ String để dễ mở rộng nền tảng mới)
+  /// @DtoReadOnly — chỉ service cập nhật khi device gọi home
   lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -169,13 +210,19 @@ model FcmDeviceToken {
   @@map("fcm_device_tokens")
 }
 
+/// Bảng nội bộ cho luồng refresh-token - token do service phát hành,
+/// client không bao giờ gửi các field này lên API.
 model RefreshToken {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  userId    String   @map("user_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  /// @DtoCreateHidden
+  /// @DtoUpdateHidden
   tokenHash String   @unique @map("token_hash")
+  /// @DtoCreateHidden
+  /// @DtoUpdateHidden
   expiresAt DateTime @map("expires_at") @db.Timestamptz
   revoked   Boolean  @default(false)
 
@@ -195,6 +242,9 @@ model RefreshToken {
 /// ExportOrder và Customer/Supplier. Loại đối tượng (import hay export, nhà
 /// cung cấp hay khách hàng) được suy ra từ FK nào khác NULL, tránh dữ liệu
 /// "type" và "id" lệch pha nhau.
+///
+/// Aggregate nội bộ: dòng sổ được ghi tự động khi hoàn tất đơn hàng /
+/// thanh toán, nên toàn bộ field nghiệp vụ đều @DtoReadOnly.
 model DebtAccount {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -203,15 +253,20 @@ model DebtAccount {
   importOrderId String? @unique @map("import_order_id") @db.Uuid
   exportOrderId String? @unique @map("export_order_id") @db.Uuid
 
+  /// @DtoReadOnly
   partyType PartyType
   customerId String? @map("customer_id") @db.Uuid
   supplierId String? @map("supplier_id") @db.Uuid
 
-  partyName String? @db.VarChar(200) @map("party_name") // snapshot tên tại thời điểm phát sinh nợ
-  refCode   String? @db.VarChar(20) @map("ref_code")     // snapshot mã đơn hàng
+  /// @DtoReadOnly — snapshot tên tại thời điểm phát sinh nợ
+  partyName String? @db.VarChar(200) @map("party_name")
+  /// @DtoReadOnly — snapshot mã đơn hàng
+  refCode   String? @db.VarChar(20) @map("ref_code")
 
+  /// @DtoReadOnly
   totalDebt       BigInt @map("total_debt")
   paidAmount      BigInt @default(0) @map("paid_amount")
+  /// @DtoReadOnly
   remainingAmount BigInt @map("remaining_amount")
 
   status DebtStatus @default(PENDING)
@@ -236,11 +291,19 @@ model DebtPayment {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  /// @DtoRelationIncludeId — cho phép truyền debtAccountId phẳng khi tạo bút toán
+  /// @IsUUID
   debtAccountId String @map("debt_account_id") @db.Uuid
+  /// Số tiền phải > 0
+  /// @IsPositive
+  /// @minimum 1
   amount        BigInt
+  /// @MaxLength(20)
   paymentMethod String? @db.VarChar(20) @map("payment_method")
+  /// @MaxLength(200)
   note          String? @db.VarChar(200)
   createdById   String? @map("created_by") @db.Uuid
+  /// @DtoCreateOptional — mặc định là "bây giờ", cho phép ghi backdate
   paidAt        DateTime @default(now()) @map("paid_at") @db.Timestamptz
 
   debtAccount DebtAccount @relation(fields: [debtAccountId], references: [id], onDelete: Cascade)
@@ -252,19 +315,26 @@ model DebtPayment {
 }
 
 // ============================================================================
-// ĐỐI TÁC (CUSTOMER / SUPPLIER)
+// ĐỐI TÁP (CUSTOMER / SUPPLIER)
 // ============================================================================
 
 model Customer {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
+  /// @Length(2, 100)
+  /// @maxLength 100
   name      String  @db.VarChar(100)
+  /// @Matches(/^\+?[0-9]{8,15}$/)
   phone     String? @db.VarChar(15)
+  /// @MaxLength(200)
   address   String? @db.VarChar(200)
-  debtLimit BigInt? @map("debt_limit") // NULL = không giới hạn
+  /// NULL = không giới hạn
+  /// @Min(0)
+  debtLimit BigInt? @map("debt_limit")
 
   debtAccounts  DebtAccount[]
   productPrices CustomerProductPrice[]
@@ -278,12 +348,20 @@ model Supplier {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
+  /// @Length(2, 100)
+  /// @maxLength 100
   name      String  @db.VarChar(100)
+  /// MST 10-13 số, vd 0123456789 hoặc 0123456789-001
+  /// @Length(10, 20)
   taxCode   String? @db.VarChar(20) @map("tax_code")
+  /// @MaxLength(200)
   address   String? @db.VarChar(200)
+  /// @Matches(/^\+?[0-9]{8,15}$/)
   phone     String? @db.VarChar(15)
+  /// @Min(0)
   debtLimit BigInt? @map("debt_limit")
 
   debtAccounts DebtAccount[]
@@ -295,6 +373,7 @@ model Supplier {
 
 /// Cache giá xuất gần nhất theo từng khách hàng/sản phẩm - không cần
 /// deletedAt vì đây là dữ liệu phái sinh (derived), không phải nguồn sự thật.
+/// Chỉ service cập nhật khi hoàn tất đơn xuất.
 model CustomerProductPrice {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
@@ -302,6 +381,7 @@ model CustomerProductPrice {
 
   customerId       String @map("customer_id") @db.Uuid
   productId        String @map("product_id") @db.Uuid
+  /// @DtoReadOnly
   lastExportPrice  BigInt @map("last_export_price")
   lastDiscountUnit BigInt @default(0) @map("last_discount_unit")
 
@@ -321,24 +401,39 @@ model ExportOrder {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
-  code String @unique @db.VarChar(20) // XK-YYYYMMDD-SEQ
+  /// @DtoReadOnly — mã XK-YYYYMMDD-SEQ do hệ thống tự sinh
+  code String @unique @db.VarChar(20)
 
-  customerId   String  @map("customer_id") @db.Uuid
-  warehouseId  String  @map("warehouse_id") @db.Uuid
+  /// @DtoRelationIncludeId — nhận customerId phẳng trong Create/UpdateDTO
+  /// @IsUUID
+  customerId   String @map("customer_id") @db.Uuid
+  /// @DtoRelationIncludeId
+  /// @IsUUID
+  warehouseId  String @map("warehouse_id") @db.Uuid
+  /// @DtoReadOnly — snapshot do service điền từ Customer/Warehouse
   customerName String? @db.VarChar(200) @map("customer_name")
+  /// @DtoReadOnly
   warehouseName String? @db.VarChar(200) @map("warehouse_name")
 
+  /// @DtoReadOnly — chuyển trạng thái qua endpoint riêng (complete/cancel)
   status        OrderStatus @default(DRAFT)
+  /// @DtoReadOnly — tổng tiền tính từ items, service chịu trách nhiệm
   totalAmount   BigInt      @default(0) @map("total_amount")
+  /// @DtoReadOnly
   totalDiscount BigInt      @default(0) @map("total_discount")
+  /// @DtoReadOnly
   netAmount     BigInt      @default(0) @map("net_amount")
+  /// @DtoReadOnly
   hasShortage   Boolean     @default(false) @map("has_shortage")
 
-  createdById  String    @map("created_by") @db.Uuid
-  exportDate   DateTime? @map("export_date") @db.Timestamptz
+  createdById String    @map("created_by") @db.Uuid
+  exportDate  DateTime? @map("export_date") @db.Timestamptz
+  /// @DtoReadOnly
   completedAt  DateTime? @map("completed_at") @db.Timestamptz
+  /// @DtoReadOnly
   cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz
 
   customer  Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -361,18 +456,26 @@ model ExportItem {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  exportOrderId String  @map("export_order_id") @db.Uuid
-  productId     String  @map("product_id") @db.Uuid
+  exportOrderId String @map("export_order_id") @db.Uuid
+  /// @DtoRelationIncludeId
+  /// @IsUUID
+  productId     String @map("product_id") @db.Uuid
+  /// @DtoReadOnly — snapshot tên sản phẩm
   productName   String? @db.VarChar(200) @map("product_name")
 
+  /// @Min(0)
   baseWeightKg Decimal @db.Decimal(10, 2) @map("base_weight_kg")
+  /// @Min(0)
   quantity     Decimal @db.Decimal(10, 2)
 
-  pricePerUnit   BigInt @map("price_per_unit")  // đ/bao
+  /// @Min(0)
+  pricePerUnit   BigInt @map("price_per_unit") // đ/bao
   discountUnit   BigInt @default(0) @map("discount_unit") // đ/kg
   discountAmount BigInt @default(0) @map("discount_amount")
-  finalPrice     BigInt @map("final_price") // = quantity * pricePerUnit
-  lineTotal      BigInt @map("line_total")  // = finalPrice - discountAmount
+  /// @DtoReadOnly — = quantity * pricePerUnit, service tính
+  finalPrice     BigInt @map("final_price")
+  /// @DtoReadOnly — = finalPrice - discountAmount
+  lineTotal      BigInt @map("line_total")
 
   order   ExportOrder @relation(fields: [exportOrderId], references: [id], onDelete: Cascade)
   product Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -390,23 +493,37 @@ model ImportOrder {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
-  code String @unique @db.VarChar(20) // NK-YYYYMMDD-SEQ
+  /// @DtoReadOnly — mã NK-YYYYMMDD-SEQ do hệ thống tự sinh
+  code String @unique @db.VarChar(20)
 
-  supplierId    String  @map("supplier_id") @db.Uuid
-  warehouseId   String  @map("warehouse_id") @db.Uuid
+  /// @DtoRelationIncludeId — nhận supplierId phẳng trong Create/UpdateDTO
+  /// @IsUUID
+  supplierId    String @map("supplier_id") @db.Uuid
+  /// @DtoRelationIncludeId
+  /// @IsUUID
+  warehouseId   String @map("warehouse_id") @db.Uuid
+  /// @DtoReadOnly — snapshot do service điền từ Supplier/Warehouse
   supplierName  String? @db.VarChar(200) @map("supplier_name")
+  /// @DtoReadOnly
   warehouseName String? @db.VarChar(200) @map("warehouse_name")
 
+  /// @DtoReadOnly — chuyển trạng thái qua endpoint riêng (complete/cancel)
   status        OrderStatus @default(DRAFT)
+  /// @DtoReadOnly — tổng tiền tính từ items, service chịu trách nhiệm
   totalAmount   BigInt      @default(0) @map("total_amount")
+  /// @DtoReadOnly
   totalDiscount BigInt      @default(0) @map("total_discount")
+  /// @DtoReadOnly
   netAmount     BigInt      @default(0) @map("net_amount")
 
   createdById String    @map("created_by") @db.Uuid
   importDate  DateTime? @map("import_date") @db.Timestamptz
+  /// @DtoReadOnly
   completedAt DateTime? @map("completed_at") @db.Timestamptz
+  /// @DtoReadOnly
   cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz
 
   supplier  Supplier  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
@@ -429,17 +546,25 @@ model ImportItem {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  importOrderId String  @map("import_order_id") @db.Uuid
-  productId     String  @map("product_id") @db.Uuid
+  importOrderId String @map("import_order_id") @db.Uuid
+  /// @DtoRelationIncludeId
+  /// @IsUUID
+  productId     String @map("product_id") @db.Uuid
+  /// @DtoReadOnly — snapshot tên sản phẩm
   productName   String? @db.VarChar(200) @map("product_name")
 
+  /// @Min(0)
   baseWeightKg Decimal @db.Decimal(10, 2) @map("base_weight_kg")
+  /// @Min(0)
   quantity     Decimal @db.Decimal(10, 2)
 
+  /// @Min(0)
   pricePerUnit   BigInt @map("price_per_unit")
   discountUnit   BigInt @default(0) @map("discount_unit")
   discountAmount BigInt @default(0) @map("discount_amount")
+  /// @DtoReadOnly — = quantity * pricePerUnit, service tính
   finalPrice     BigInt @map("final_price")
+  /// @DtoReadOnly — = finalPrice - discountAmount
   lineTotal      BigInt @map("line_total")
 
   order   ImportOrder @relation(fields: [importOrderId], references: [id], onDelete: Cascade)
@@ -458,24 +583,38 @@ model Product {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
+  /// @Length(2, 100)
+  /// @maxLength 100
   name     String  @db.VarChar(100)
+  /// @MaxLength(50)
   category String? @db.VarChar(50)
+  /// @Length(3, 20)
   sku      String  @unique @db.VarChar(20)
 
-  baseWeightKg    Decimal @db.Decimal(10, 2) @map("base_weight_kg")
-  basePriceBag    BigInt  @default(0) @map("base_price_bag")   // giá/bao
-  baseDiscPriceKg BigInt  @default(0) @map("base_disc_price_kg") // giá giảm/kg
-  avgImportPrice  BigInt  @default(0) @map("avg_import_price")
-  isActive        Boolean @default(true) @map("is_active")
+  /// @Min(0)
+  baseWeightKg Decimal @db.Decimal(10, 2) @map("base_weight_kg")
+  /// @DtoCreateOptional — giá/bao do seller khai báo khi tạo/sửa
+  /// @DtoUpdateOptional
+  /// @Min(0)
+  basePriceBag BigInt @default(0) @map("base_price_bag")
+  /// @DtoCreateOptional — giá giảm/kg
+  /// @DtoUpdateOptional
+  /// @Min(0)
+  baseDiscPriceKg BigInt @default(0) @map("base_disc_price_kg")
+  /// @DtoReadOnly — giá nhập bình quân gia quyền, service tính lại
+  avgImportPrice BigInt  @default(0) @map("avg_import_price")
+  /// @DtoUpdateOptional — ngừng kinh doanh mà không xoá
+  isActive       Boolean @default(true) @map("is_active")
 
   exportItems        ExportItem[]
-  importItems         ImportItem[]
-  productWarehouses   ProductWarehouse[]
-  inventories         Inventory[]
-  inventoryTxns       InventoryTransaction[]
-  customerPrices      CustomerProductPrice[]
+  importItems        ImportItem[]
+  productWarehouses  ProductWarehouse[]
+  inventories        Inventory[]
+  inventoryTxns      InventoryTransaction[]
+  customerPrices     CustomerProductPrice[]
 
   @@index([category])
   @@map("products")
@@ -487,9 +626,15 @@ model ProductWarehouse {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  productId           String  @map("product_id") @db.Uuid
-  warehouseId         String  @map("warehouse_id") @db.Uuid
-  allowNegativeStock  Boolean @default(false) @map("allow_negative_stock")
+  /// @DtoRelationIncludeId
+  /// @IsUUID
+  productId String @map("product_id") @db.Uuid
+  /// @DtoRelationIncludeId
+  /// @IsUUID
+  warehouseId String @map("warehouse_id") @db.Uuid
+  /// @DtoCreateOptional
+  /// @DtoUpdateOptional
+  allowNegativeStock Boolean @default(false) @map("allow_negative_stock")
 
   product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
@@ -501,15 +646,16 @@ model ProductWarehouse {
 /// Số dư tồn kho hiện tại - đây là bảng "state" (số dư), không phải log, nên
 /// không có deletedAt. Unique(productId, warehouseId) là bắt buộc để tránh
 /// nhiều dòng tồn kho cho cùng 1 cặp sản phẩm/kho gây sai lệch số liệu.
+/// Bảng nội bộ - chỉ service cập nhật qua transaction, không expose DTO.
 model Inventory {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  productId         String  @map("product_id") @db.Uuid
-  warehouseId       String  @map("warehouse_id") @db.Uuid
-  currentQuantity   Decimal @default(0) @db.Decimal(14, 2) @map("current_quantity")
-  reservedQuantity  Decimal @default(0) @db.Decimal(14, 2) @map("reserved_quantity")
+  productId        String  @map("product_id") @db.Uuid
+  warehouseId      String  @map("warehouse_id") @db.Uuid
+  currentQuantity  Decimal @default(0) @db.Decimal(14, 2) @map("current_quantity")
+  reservedQuantity Decimal @default(0) @db.Decimal(14, 2) @map("reserved_quantity")
 
   product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
@@ -523,10 +669,15 @@ model Warehouse {
   id        String    @id @default(uuid()) @db.Uuid
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  /// @DtoReadOnly
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
+  /// @Length(2, 100)
+  /// @maxLength 100
   name     String  @db.VarChar(100)
+  /// @MaxLength(200)
   address  String? @db.VarChar(200)
+  /// @DtoUpdateOptional — mở/đóng kho
   isActive Boolean @default(true) @map("is_active")
 
   inventories       Inventory[]
@@ -543,19 +694,26 @@ model Warehouse {
 /// tuý, có thể trỏ tới nhiều loại nguồn gốc khác nhau (đơn nhập, đơn xuất,
 /// điều chỉnh tay, hoàn tác) - khác với DebtAccount là một aggregate cần
 /// toàn vẹn tham chiếu chặt.
+///
+/// Bảng log nội bộ - mọi field nghiệp vụ đều @DtoReadOnly, chỉ service ghi.
 model InventoryTransaction {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  productId    String  @map("product_id") @db.Uuid
-  warehouseId  String  @map("warehouse_id") @db.Uuid
+  productId   String @map("product_id") @db.Uuid
+  warehouseId String @map("warehouse_id") @db.Uuid
+  /// @DtoReadOnly
   changeAmount Decimal @db.Decimal(14, 2) @map("change_amount")
 
+  /// @DtoReadOnly
   refType InventoryRefType @map("ref_type")
+  /// @DtoReadOnly
   refId   String?          @map("ref_id")
 
+  /// @DtoReadOnly
   balanceAfter Decimal? @db.Decimal(14, 2) @map("balance_after")
-  eventId      String?  @unique @map("event_id") // idempotency - THIẾU unique ở bản gốc
+  /// @DtoReadOnly — idempotency key do producer sinh
+  eventId      String?  @unique @map("event_id")
   createdById  String?  @map("created_by") @db.Uuid
 
   product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -578,6 +736,8 @@ model Notification {
 
   userId String? @map("user_id") @db.Uuid // NULL = broadcast toàn hệ thống
   type   NotificationType
+  /// @Length(1, 100)
+  /// @maxLength 100
   title  String  @db.VarChar(100)
   body   String? @db.Text
   payload Json?
@@ -587,10 +747,12 @@ model Notification {
   linkedImportOrderId String? @map("linked_import_order_id") @db.Uuid
   linkedExportOrderId String? @map("linked_export_order_id") @db.Uuid
 
-  readAt     DateTime? @map("read_at") @db.Timestamptz
+  /// @DtoReadOnly — do service đánh dấu khi user đọc
+  readAt DateTime? @map("read_at") @db.Timestamptz
+  /// @DtoReadOnly
   resolvedAt DateTime? @map("resolved_at") @db.Timestamptz
 
-  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user              User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   linkedImportOrder ImportOrder? @relation(fields: [linkedImportOrderId], references: [id], onDelete: SetNull)
   linkedExportOrder ExportOrder? @relation(fields: [linkedExportOrderId], references: [id], onDelete: SetNull)
 
@@ -600,18 +762,31 @@ model Notification {
 }
 
 /// Bảng chống trùng lặp xử lý sự kiện (idempotency) cho kiến trúc hướng sự
-/// kiện / message queue.
+/// kiện / message queue. Bảng nội bộ - consumer ghi, không expose DTO.
 model EventInbox {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  eventId     String   @unique @map("event_id")
-  eventType   String   @db.VarChar(50) @map("event_type")
-  payload     Json?
+  /// @DtoReadOnly
+  eventId   String   @unique @map("event_id")
+  /// @DtoReadOnly
+  eventType String   @db.VarChar(50) @map("event_type")
+  /// @DtoReadOnly
+  payload   Json?
+  /// @DtoReadOnly
   processedAt DateTime @map("processed_at") @db.Timestamptz
   status      EventInboxStatus @default(PROCESSED)
 
   @@index([eventType])
   @@map("event_inbox")
 }
+
+// ============================================================================
+// GHI CHÚ SOFT-DELETE + UNIQUE
+// ============================================================================
+// Các bảng dùng soft-delete (deletedAt) có @@unique trên field nghiệp vụ
+// (username, code, sku...): khi xoá mềm cần giải phóng giá trị unique
+// (vd đổi thành "sku__deleted_<id>") hoặc chuyển sang partial index:
+//   CREATE UNIQUE INDEX ... WHERE deleted_at IS NULL;
+// Prisma chưa hỗ trợ partial index declarative -> xử lý ở tầng service/migration SQL.

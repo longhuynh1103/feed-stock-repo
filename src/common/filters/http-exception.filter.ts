@@ -12,7 +12,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const store = alsContext.getStore();
     const requestId = store?.requestId;
     const startTimeStr = store?.startTime;
-
     this.logger.error(`[ReqId: ${requestId}] | Exception ==>\n ${exception} \n<==`);
 
     const ctx = host.switchToHttp();
@@ -91,7 +90,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       };
     } else {
       // In đầy đủ stack trace ra terminal để bạn debug lỗi lập trình
-      this.logger.error(`[${requestId}] Unknown error ===>\n ${exception?.stack || exception} \n<===`);
+      this.logger.error(`[ReqId: ${requestId}] | Unknown error ===>\n ${exception?.stack || exception} \n<===`);
     }
     return { status, error };
   }

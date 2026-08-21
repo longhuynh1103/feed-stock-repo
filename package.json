@@ -25,7 +25,7 @@
     "@nestjs/common": "^11.2.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.2.1",
-    "@nestjs/mapped-types": "*",
+    "@nestjs/mapped-types": "^2.1.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-fastify": "^11.2.1",
     "@nestjs/swagger": "^11.4.6",
@@ -43,6 +43,7 @@
     "uuid": "^14.0.2"
   },
   "devDependencies": {
+    "@brakebein/prisma-generator-nestjs-dto": "^1.30.0",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
@@ -56,7 +57,6 @@
     "@types/semver": "^7.8.0",
     "@types/signale": "^1.4.7",
     "@types/supertest": "^7.0.0",
-    "@vegardit/prisma-generator-nestjs-dto": "^1.5.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
