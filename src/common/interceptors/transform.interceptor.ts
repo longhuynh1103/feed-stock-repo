@@ -2,12 +2,13 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } fr
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { alsContext } from '@/common/context/als.context';
+import IResp from '@/common/interface/resp.interface';
 
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor {
   private readonly logger = new Logger('TransformInterceptor');
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<IResp<T>> {
     const ctx = context.switchToHttp();
     const request = ctx.getRequest();
     const response = ctx.getResponse();
@@ -29,7 +30,7 @@ export class TransformInterceptor<T> implements NestInterceptor {
 
         return {
           statusCode,
-          message: data?.message || 'Success',
+          message: 'Success',
           requestId,
           executionTime: `${executionTime}ms`, // Trả thêm thông tin này về cho Client nếu muốn (Tùy chọn)
           data: data?.data !== undefined ? data.data : data,

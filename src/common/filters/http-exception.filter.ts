@@ -13,7 +13,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const requestId = store?.requestId;
     const startTimeStr = store?.startTime;
 
-    this.logger.error(`[${requestId}] Exception ==>\n ${exception} \n<==`);
+    this.logger.error(`[ReqId: ${requestId}] | Exception ==>\n ${exception} \n<==`);
 
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<FastifyReply>();
@@ -29,11 +29,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const respBody = {
       statusCode: status,
+      message: 'Failed',
       error,
       requestId,
       executionTime: `${executionTime}ms`, // Trả về cho client biết lỗi xảy ra sau bao lâu
-      timestamp: new Date().toISOString(),
-      path: request.url,
     };
 
     // // Log chi tiết lỗi kèm theo cả RequestID và số mili-giây xử lý thất bại

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from '@/generated/dtos/create-product.dto';
 import { UpdateProductDto } from '@/generated/dtos/update-product.dto';
@@ -9,7 +9,7 @@ export class ProductsController {
 
   @Post()
   async create(@Body() createProductDto: CreateProductDto) {
-    return await this.productsService.create(createProductDto);
+    return await this.productsService.create({ payload: createProductDto });
   }
 
   @Get()

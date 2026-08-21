@@ -28,6 +28,7 @@ export class RequestIdMiddleware implements NestMiddleware {
       method,
       path,
       startTime: performance.now().toString(),
+      requester: { username: 'xadmin', role: 'admin', id: 'xadmin' },
     };
 
     // 4. Gắn ngược requestId vào Header phản hồi

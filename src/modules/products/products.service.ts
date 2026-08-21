@@ -10,10 +10,12 @@ export class ProductsService {
   constructor(private readonly prismaService: PrismaService) {
     this.logger = new Logger(ProductsService.name);
   }
-  async create(createProductDto: CreateProductDto) {
+  async create(data: { payload: CreateProductDto }) {
     const store = alsContext.getStore();
-    this.logger.log(`[${store?.requestId}] Creating product...`);
-    return await this.prismaService.product.create({ data: createProductDto });
+    const { payload } = data;
+    const action = this.create.name;
+    this.logger.log(`[ReqId: ${store?.requestId} | Action: ${action}]`);
+    return await this.prismaService.product.create({ data: payload });
   }
 
   findAll() {
