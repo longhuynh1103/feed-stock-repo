@@ -90,7 +90,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       };
     } else {
       // In đầy đủ stack trace ra terminal để bạn debug lỗi lập trình
-      this.logger.error(`[ReqId: ${requestId}] | Unknown error ===>\n ${exception?.stack || exception} \n<===`);
+      this.logger.error(`[ReqId: ${requestId}] | Unknown error ==>\n ${exception?.stack || exception} \n<==`);
     }
     return { status, error };
   }
