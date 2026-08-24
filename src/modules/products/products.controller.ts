@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { ProductsService } from './products.service';
 import { CreateProductDto } from '@/generated/dto/create-product.dto';
 import { UpdateProductDto } from '@/generated/dto/update-product.dto';
-import { Product } from '@prisma/client';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -14,9 +14,8 @@ export class ProductsController {
   }
 
   @Get()
-  async findAll(@Query() query: { limit?: number; page?: number; orderBy?: keyof Product; orderType?: string }) {
-    const { limit = 10, page = 1, orderBy = 'createdAt', orderType = 'desc' } = query;
-    return await this.productsService.findAll({ limit, page, orderBy, orderType });
+  async findAll(@Query() query: PaginationQueryDto) {
+    return await this.productsService.findAll(query);
   }
 
   @Get(':id')

@@ -8,6 +8,7 @@
   "scripts": {
     "release": "node scripts/release.js",
     "generate:dto": "prisma generate && node scripts/patch-generated-dto.mjs",
+    "generate:module": "node scripts/generate-module.mjs",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
