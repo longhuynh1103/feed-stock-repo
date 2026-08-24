@@ -6,7 +6,7 @@ import { Product } from '@prisma/client';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService) {}
 
   @Post()
   async create(@Body() payload: CreateProductDto) {
@@ -14,7 +14,7 @@ export class ProductsController {
   }
 
   @Get()
-  async findAll(@Query() query: { limit?: number, page?: number, orderBy?: keyof Product, orderType?: string }) {
+  async findAll(@Query() query: { limit?: number; page?: number; orderBy?: keyof Product; orderType?: string }) {
     const { limit = 10, page = 1, orderBy = 'createdAt', orderType = 'desc' } = query;
     return await this.productsService.findAll({ limit, page, orderBy, orderType });
   }

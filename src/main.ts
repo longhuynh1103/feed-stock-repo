@@ -9,6 +9,11 @@ import fastifyApiReference from '@scalar/fastify-api-reference';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Fastify serialize response bằng JSON.stringify nên cần dạy cách convert BigInt (các field giá tiền) sang Number
+(BigInt.prototype as unknown as { toJSON(): number }).toJSON = function () {
+  return Number(this);
+};
+
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,

@@ -1,7 +1,15 @@
 
 import {Prisma} from '@prisma/client'
 import {ApiProperty} from '@nestjs/swagger'
-import {IsDecimal,IsInt,IsNotEmpty,IsString,IsUUID,Min} from 'class-validator'
+import {
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator'
+import { Transform } from 'class-transformer';
+import { IsFlexibleDecimal } from '@/common/validators/is-flexible-decimal.decorator';
 
 
 
@@ -19,7 +27,8 @@ productId: string ;
   format: 'Decimal.js',
 })
 @IsNotEmpty()
-@IsDecimal()
+@Transform(({ value }) => (typeof value === 'string' ? Number(value) : value))
+@IsFlexibleDecimal()
 @Min(0)
 baseWeightKg: Prisma.Decimal ;
 @ApiProperty({
@@ -27,7 +36,8 @@ baseWeightKg: Prisma.Decimal ;
   format: 'Decimal.js',
 })
 @IsNotEmpty()
-@IsDecimal()
+@Transform(({ value }) => (typeof value === 'string' ? Number(value) : value))
+@IsFlexibleDecimal()
 @Min(0)
 quantity: Prisma.Decimal ;
 @ApiProperty({
