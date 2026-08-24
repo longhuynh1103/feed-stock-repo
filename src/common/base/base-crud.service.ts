@@ -15,6 +15,7 @@ export interface ICrudDelegate<TModel, TCreateInput, TUpdateInput, TWhereInput> 
   findUniqueOrThrow(args: { where: Record<string, string> }): Promise<TModel>;
   update(args: { where: Record<string, string>; data: TUpdateInput }): Promise<TModel>;
   delete(args: { where: Record<string, string> }): Promise<TModel>;
+  count(args?: { where?: TWhereInput }): Promise<number>;
 }
 
 export interface IPaginationQuery {
@@ -51,6 +52,15 @@ export abstract class BaseCrudService<TModel, TCreateInput = any, TUpdateInput =
 
   // ==================== Hook ghi đè khi cần tùy chỉnh ====================
 
+  /**
+   * Chạy nhiều thao tác (kể cả các model khác) trong MỘT transaction atomic.
+   * Module dùng nhiều model: truy cập model phụ qua `tx.<model>` hoặc `this.prismaService.<model>` (ngoài tx).
+   * Lưu ý: maxWait phải đủ lớn vì pooled endpoint (Prisma Postgres) mất ~2-3s để mở transaction.
+   */
+  protected async runInTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return await this.prismaService.$transaction(fn, { maxWait: 10_000, timeout: 15_000 });
+  }
+
   /** Điều kiện unique khi tra cứu 1 bản ghi (mặc định theo id, đổi sang slug/code... tại đây) */
   protected getUniqueFilter(id: string): Record<string, string> {
     return { id };
@@ -73,26 +83,41 @@ export abstract class BaseCrudService<TModel, TCreateInput = any, TUpdateInput =
     return payload;
   }
 
+  /** Chuẩn hóa entity trước khi trả về client (ẩn field nhạy cảm như passwordHash...) */
+  protected serializeOne(entity: TModel): TModel {
+    return entity;
+  }
+
+  protected serializeMany(entities: TModel[]): TModel[] {
+    return entities.map((entity) => this.serializeOne(entity));
+  }
+
   // ==================== CRUD mặc định ====================
 
   async create(data: { payload: TCreateInput }): Promise<TModel> {
     const store = alsContext.getStore();
     const action = this.create.name;
     this.logger.log(`[ReqId: ${store?.requestId} | Action: ${action}]`);
-    return await this.delegate.create({ data: this.transformCreateData(data.payload) });
+    return this.serializeOne(await this.delegate.create({ data: this.transformCreateData(data.payload) }));
   }
 
-  async findAll(data: IPaginationQuery): Promise<TModel[]> {
+  async findAll(data: IPaginationQuery): Promise<{ items: TModel[]; meta: Record<string, unknown> }> {
     const store = alsContext.getStore();
     const action = this.findAll.name;
     this.logger.log(`[ReqId: ${store?.requestId} | Action: ${action}]`);
     const { limit, page, orderBy, orderType } = data;
-    return await this.delegate.findMany({
-      take: limit,
-      skip: (page - 1) * limit,
-      where: this.getListWhere(data),
-      orderBy: orderBy ? ({ [orderBy]: orderType ?? 'desc' } as Record<string, Prisma.SortOrder>) : { createdAt: 'desc' },
-    });
+    const [rows, total] = await Promise.all([
+      this.delegate.findMany({
+        take: limit,
+        skip: (page - 1) * limit,
+        where: this.getListWhere(data),
+        orderBy: orderBy ? ({ [orderBy]: orderType ?? 'desc' } as Record<string, Prisma.SortOrder>) : { createdAt: 'desc' },
+      }),
+      this.delegate.count({
+        where: this.getListWhere(data),
+      }),
+    ]);
+    return { items: this.serializeMany(rows), meta: { page, limit, total, hasNextPage: page * limit < total, hasPrevPage: page > 1, hasFirstPage: page === 1, hasLastPage: page * limit >= total } };
   }
 
   async findOne(data: { id: string }): Promise<TModel> {
@@ -100,7 +125,7 @@ export abstract class BaseCrudService<TModel, TCreateInput = any, TUpdateInput =
     const { id } = data;
     const action = this.findOne.name;
     this.logger.log(`[ReqId: ${store?.requestId} | Action: ${action}]`);
-    return await this.delegate.findUniqueOrThrow({ where: this.getUniqueFilter(id) });
+    return this.serializeOne(await this.delegate.findUniqueOrThrow({ where: this.getUniqueFilter(id) }));
   }
 
   async update(data: { id: string; payload: TUpdateInput }): Promise<TModel> {
@@ -108,10 +133,11 @@ export abstract class BaseCrudService<TModel, TCreateInput = any, TUpdateInput =
     const { id, payload } = data;
     const action = this.update.name;
     this.logger.log(`[ReqId: ${store?.requestId} | Action: ${action}]`);
-    return await this.delegate.update({
+    const updated = await this.delegate.update({
       where: this.getUniqueFilter(id),
       data: this.transformUpdateData(id, payload),
     });
+    return this.serializeOne(updated);
   }
 
   async remove(data: { id: string }): Promise<TModel> {
@@ -119,6 +145,6 @@ export abstract class BaseCrudService<TModel, TCreateInput = any, TUpdateInput =
     const { id } = data;
     const action = this.remove.name;
     this.logger.log(`[ReqId: ${store?.requestId} | Action: ${action}]`);
-    return await this.delegate.delete({ where: this.getUniqueFilter(id) });
+    return this.serializeOne(await this.delegate.delete({ where: this.getUniqueFilter(id) }));
   }
 }

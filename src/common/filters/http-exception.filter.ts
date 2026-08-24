@@ -61,10 +61,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       switch (exception.code) {
         case 'P2002': // Duplicate
+          const fields: string[] = this.findFieldsUnique(exception);
           status = HttpStatus.CONFLICT;
           error = {
             code: 'DATA_CONFLICT',
-            message: `Dữ liệu bị trùng lặp thuộc tính duy nhất: ${exception.meta?.target || ''}`,
+            message: `Giá trị của trường "${fields.join(', ')}" đã tồn tại trong hệ thống.`,
           };
           break;
         case 'P2025': // Not found
@@ -93,5 +94,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.error(`[ReqId: ${requestId}] | Unknown error ==>\n ${exception?.stack || exception} \n<==`);
     }
     return { status, error };
+  }
+
+  findFieldsUnique(exception: Prisma.PrismaClientKnownRequestError): string[] {
+    let fields: string[] = [];
+    const target = exception.meta?.target;
+    if (Array.isArray(target)) {
+      fields = target;
+    } else if (typeof target === 'string') {
+      fields = [target.split('_').pop() || target];
+    }
+
+    if (fields.length === 0 && exception.message) {
+      const match = exception.message.match(/fields:\s*\((.*?)\)/)
+      if (match && match[1]) {
+        fields = match[1].replace(/`/g, '').split(',').map(f => f.trim());
+      }
+    }
+
+    if (fields.length === 0) {
+      fields = ['dữ liệu duy nhất']
+    }
+    return fields;
   }
 }

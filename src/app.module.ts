@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -19,6 +20,11 @@ import { InventoriesModule } from './modules/inventories/inventories.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true, // Dùng được ở mọi module mà không cần import lại
+    }),
+    // Event bus toàn ứng dụng: các service phát/nhận sự kiện bất đồng bộ với nhau,
+    // listener chạy độc lập không làm chậm request chính
+    EventEmitterModule.forRoot({
+      ignoreErrors: true, // Listener async văng lỗi không làm crash process
     }),
     PrismaModule,
     ProductsModule,
