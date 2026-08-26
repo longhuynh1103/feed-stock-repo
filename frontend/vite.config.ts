@@ -1,29 +1,15 @@
 import { defineConfig } from 'vite'
-import { devtools } from '@tanstack/devtools-vite'
-import { paraglideVitePlugin } from '@inlang/paraglide-js'
-
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-
-import viteReact, { reactCompilerPreset } from '@vitejs/plugin-react'
-import babel from '@rolldown/plugin-babel'
+import react from '@vitejs/plugin-react'
+import tsconfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
-import contentCollections from '@content-collections/vite'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
-const config = defineConfig({
-  resolve: { tsconfigPaths: true },
+// https://vite.dev/config/
+export default defineConfig({
   plugins: [
-    devtools(),
-    paraglideVitePlugin({
-      project: './project.inlang',
-      outdir: './src/paraglide',
-      strategy: ['url', 'baseLocale'],
-    }),
-    contentCollections(),
-    tailwindcss(),
-    tanstackStart(),
-    viteReact(),
-    babel({ presets: [reactCompilerPreset()] }),
+    TanStackRouterVite(), // Bắt buộc đặt TRƯỚC react() để sinh route tự động
+    react(),
+    tsconfigPaths(),
+    tailwindcss(), // Tích hợp Tailwind v4 làm Vite plugin
   ],
 })
-
-export default config

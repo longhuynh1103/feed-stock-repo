@@ -1,205 +1,413 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowRight, Calendar, MapPin, Users } from 'lucide-react'
+import { createFileRoute } from '@tanstack/react-router'
+import {
+  createColumnHelper,
+  tableFeatures,
+  useTable,
+} from '@tanstack/react-table'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useForm } from '@tanstack/react-form'
+import { flexRender } from '@tanstack/react-table'
+import { useState } from 'react'
 
-import { allSpeakers, allTalks } from 'content-collections'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
-import SpeakerCard from '#/components/SpeakerCard'
-import TalkCard from '#/components/TalkCard'
-import RemyAssistant from '#/components/RemyAssistant'
-import HeroCarousel from '#/components/HeroCarousel'
+// ==========================================
+// 1. USER TYPE
+// ==========================================
+
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+// ==========================================
+// 2. MOCK DATA
+// ==========================================
+
+let mockUsers: User[] = [
+  {
+    id: 1,
+    name: 'Nguyễn Văn A',
+    email: 'a@gmail.com',
+  },
+  {
+    id: 2,
+    name: 'Trần Thị B',
+    email: 'b@gmail.com',
+  },
+]
+
+// ==========================================
+// 3. TANSTACK TABLE V9 FEATURES
+// ==========================================
+//
+// v9 yêu cầu createColumnHelper có TFeatures.
+// Core row model được tạo tự động.
+//
+// Nếu sau này cần sorting/filtering/pagination,
+// có thể thêm feature tương ứng vào đây.
+//
+
+const features = tableFeatures({})
+
+const columnHelper = createColumnHelper<typeof features, User>()
+
+// ==========================================
+// 4. TABLE COLUMNS
+// ==========================================
+//
+// Không cần ColumnDef<User, any>[].
+// Để helper tự infer type.
+//
+
+const columns = columnHelper.columns([
+  columnHelper.accessor('id', {
+    header: 'ID',
+    cell: (info) => info.getValue(),
+  }),
+
+  columnHelper.accessor('name', {
+    header: 'Họ và Tên',
+    cell: (info) => info.getValue(),
+  }),
+
+  columnHelper.accessor('email', {
+    header: 'Địa chỉ Email',
+    cell: (info) => info.getValue(),
+  }),
+])
+
+// ==========================================
+// 5. ROUTE
+// ==========================================
 
 export const Route = createFileRoute('/')({
-  component: HomePage,
+  component: HomeComponent,
 })
 
-function HomePage() {
-  const featuredSpeakers = allSpeakers.slice(0, 3)
-  const featuredTalks = allTalks.slice(0, 4)
+// ==========================================
+// 6. COMPONENT
+// ==========================================
+
+function HomeComponent() {
+  const queryClient = useQueryClient()
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  // ==========================================
+  // TANSTACK QUERY
+  // ==========================================
+
+  const {
+    data: users = [],
+    isLoading,
+  } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400))
+
+      return [...mockUsers]
+    },
+  })
+
+  // ==========================================
+  // CREATE USER MUTATION
+  // ==========================================
+
+  const createUserMutation = useMutation({
+    mutationFn: async (newUser: Omit<User, 'id'>) => {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+
+      mockUsers.push({
+        id: Date.now(),
+        ...newUser,
+      })
+    },
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['users'],
+      })
+
+      setIsDialogOpen(false)
+    },
+  })
+
+  // ==========================================
+  // TANSTACK FORM
+  // ==========================================
+
+  const form = useForm({
+    defaultValues: {
+      name: '',
+      email: '',
+    },
+
+    onSubmit: async ({ value }) => {
+      await createUserMutation.mutateAsync(value)
+
+      form.reset()
+    },
+  })
+
+  // ==========================================
+  // TANSTACK TABLE V9
+  // ==========================================
+
+  const table = useTable({
+    features,
+    data: users,
+    columns,
+  })
+
+  // ==========================================
+  // RENDER
+  // ==========================================
 
   return (
-    <>
-      <RemyAssistant />
+    <div className="mx-auto max-w-4xl space-y-6 py-10">
+      {/* ======================================
+          HEADER
+      ======================================= */}
 
-      {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center px-6 overflow-hidden">
-        {/* Background carousel */}
-        <HeroCarousel />
-
-        <div className="relative max-w-5xl mx-auto text-center z-10">
-          {/* Event date badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full bg-copper/10 border border-copper/30 text-copper-light text-sm font-medium">
-            <Calendar className="w-4 h-4" />
-            <span>March 15-17, 2026</span>
-            <span className="mx-2 text-copper/40">•</span>
-            <MapPin className="w-4 h-4" />
-            <span>Paris, France</span>
-          </div>
-
-          {/* Main title */}
-          <h1 className="font-display text-6xl md:text-8xl font-bold text-cream mb-6 leading-tight">
-            Haute
-            <span className="block text-gold italic">Pâtisserie</span>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Hệ thống quản lý
           </h1>
 
-          <p className="text-xl md:text-2xl text-cream/70 font-body max-w-3xl mx-auto mb-10 leading-relaxed">
-            Join the world's most celebrated pastry chefs and master bakers for
-            three extraordinary days of masterclasses, demonstrations, and
-            culinary inspiration.
+          <p className="text-muted-foreground">
+            Giải pháp đồng bộ shadcn/ui và TanStack V9.
           </p>
-
-          {/* Stats */}
-          <div className="flex flex-wrap justify-center gap-8 mb-12">
-            <div className="text-center">
-              <div className="text-4xl font-display font-bold text-gold">
-                {allSpeakers.length}
-              </div>
-              <div className="text-cream/50 text-sm uppercase tracking-wider">
-                Master Chefs
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-display font-bold text-gold">
-                {allTalks.length}
-              </div>
-              <div className="text-cream/50 text-sm uppercase tracking-wider">
-                Sessions
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-display font-bold text-gold">3</div>
-              <div className="text-cream/50 text-sm uppercase tracking-wider">
-                Days
-              </div>
-            </div>
-          </div>
-
-          {/* CTA buttons */}
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              to="/speakers"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-copper to-copper-dark text-charcoal font-semibold text-lg transition-all hover:shadow-lg hover:shadow-copper/30 hover:scale-[1.02]"
-            >
-              <Users className="w-5 h-5" />
-              Meet Our Speakers
-            </Link>
-            <Link
-              to="/talks"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full border-2 border-gold/50 text-gold font-semibold text-lg transition-all hover:bg-gold/10 hover:border-gold"
-            >
-              View Sessions
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
         </div>
-      </section>
 
-      {/* Featured Speakers Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-end justify-between mb-12">
-            <div>
-              <h2 className="font-display text-4xl md:text-5xl font-bold text-cream mb-3">
-                Featured <span className="text-gold italic">Speakers</span>
-              </h2>
-              <p className="text-cream/60 text-lg font-body">
-                Learn from award-winning pastry chefs and master bakers
-              </p>
-            </div>
-            <Link
-              to="/speakers"
-              className="hidden md:inline-flex items-center gap-2 text-gold hover:text-gold/80 transition-colors font-medium"
+        {/* ======================================
+            CREATE USER DIALOG
+        ======================================= */}
+
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        >
+          <DialogTrigger asChild>
+            <Button>
+              Thêm thành viên
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Tạo thành viên mới
+              </DialogTitle>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+
+                form.handleSubmit()
+              }}
+              className="space-y-4 pt-4"
             >
-              View all speakers
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+              {/* ==================================
+                  NAME
+              =================================== */}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {featuredSpeakers.map((speaker) => (
-              <SpeakerCard key={speaker.slug} speaker={speaker} featured />
-            ))}
-          </div>
+              <form.Field
+                name="name"
+                validators={{
+                  onChange: ({ value }) =>
+                    !value.trim()
+                      ? 'Họ tên không được để trống'
+                      : undefined,
+                }}
+              >
+                {(field) => (
+                  <div className="space-y-1">
+                    <Label htmlFor={field.name}>
+                      Họ và tên
+                    </Label>
 
-          <div className="md:hidden mt-8 text-center">
-            <Link
-              to="/speakers"
-              className="inline-flex items-center gap-2 text-gold hover:text-gold/80 transition-colors font-medium"
-            >
-              View all speakers
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
+                    <Input
+                      id={field.name}
+                      value={field.state.value}
+                      onChange={(e) =>
+                        field.handleChange(e.target.value)
+                      }
+                      onBlur={field.handleBlur}
+                    />
 
-      {/* Divider */}
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                    {field.state.meta.errors.length > 0 ? (
+                      <em className="text-xs text-destructive">
+                        {field.state.meta.errors.join(', ')}
+                      </em>
+                    ) : null}
+                  </div>
+                )}
+              </form.Field>
+
+              {/* ==================================
+                  EMAIL
+              =================================== */}
+
+              <form.Field
+                name="email"
+                validators={{
+                  onChange: ({ value }) =>
+                    !value.includes('@')
+                      ? 'Email không đúng định dạng'
+                      : undefined,
+                }}
+              >
+                {(field) => (
+                  <div className="space-y-1">
+                    <Label htmlFor={field.name}>
+                      Email
+                    </Label>
+
+                    <Input
+                      id={field.name}
+                      type="email"
+                      value={field.state.value}
+                      onChange={(e) =>
+                        field.handleChange(e.target.value)
+                      }
+                      onBlur={field.handleBlur}
+                    />
+
+                    {field.state.meta.errors.length > 0 ? (
+                      <em className="text-xs text-destructive">
+                        {field.state.meta.errors.join(', ')}
+                      </em>
+                    ) : null}
+                  </div>
+                )}
+              </form.Field>
+
+              {/* ==================================
+                  ACTIONS
+              =================================== */}
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  Hủy
+                </Button>
+
+                <form.Subscribe
+                  selector={(state) => [
+                    state.canSubmit,
+                    state.isSubmitting,
+                  ]}
+                >
+                  {([canSubmit, isSubmitting]) => (
+                    <Button
+                      type="submit"
+                      disabled={
+                        !canSubmit ||
+                        createUserMutation.isPending
+                      }
+                    >
+                      {isSubmitting ||
+                      createUserMutation.isPending
+                        ? 'Đang lưu...'
+                        : 'Lưu lại'}
+                    </Button>
+                  )}
+                </form.Subscribe>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Featured Sessions Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-end justify-between mb-12">
-            <div>
-              <h2 className="font-display text-4xl md:text-5xl font-bold text-cream mb-3">
-                Featured <span className="text-gold italic">Sessions</span>
-              </h2>
-              <p className="text-cream/60 text-lg font-body">
-                Masterclasses and demonstrations to elevate your craft
-              </p>
-            </div>
-            <Link
-              to="/talks"
-              className="hidden md:inline-flex items-center gap-2 text-gold hover:text-gold/80 transition-colors font-medium"
-            >
-              View all sessions
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+      {/* ========================================
+          TABLE
+      ========================================= */}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {featuredTalks.map((talk) => (
-              <TalkCard key={talk.slug} talk={talk} featured />
-            ))}
+      <div className="glass rounded-md border text-card-foreground shadow-sm">
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground animate-pulse">
+            Đang đồng bộ danh sách dữ liệu...
           </div>
+        ) : (
+          <Table>
+            {/* ==================================
+                HEADER
+            =================================== */}
 
-          <div className="md:hidden mt-8 text-center">
-            <Link
-              to="/talks"
-              className="inline-flex items-center gap-2 text-gold hover:text-gold/80 transition-colors font-medium"
-            >
-              View all sessions
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
 
-      {/* CTA Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="relative p-12 rounded-3xl bg-gradient-to-br from-card to-charcoal border border-border/50 overflow-hidden">
-            {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-copper/5 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gold/5 rounded-full blur-3xl" />
+            {/* ==================================
+                BODY
+            =================================== */}
 
-            <div className="relative">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-cream mb-4">
-                Ready to Elevate Your Craft?
-              </h2>
-              <p className="text-cream/60 text-lg font-body mb-8 max-w-2xl mx-auto">
-                Join us in Paris for an unforgettable experience with the
-                world's finest pastry artisans.
-              </p>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold/10 border border-gold/30 text-gold text-sm font-medium">
-                <span>🥐</span>
-                <span>Registration opens January 2026</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
+            <TableBody>
+              {table.getRowModel().rows.length > 0 ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getAllCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    Không tìm thấy dữ liệu nào trên hệ thống.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    </div>
   )
 }
